@@ -1,4 +1,4 @@
-import { readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { connect } from "puppeteer-real-browser";
 
 type Output = {
@@ -21,7 +21,7 @@ async function run() {
   const cookies = JSON.parse(cookiesData);
 
   await page.setCookie(...cookies);
-  await page.goto("https://www.instagram.com/p/DQjXtfwiM02/");
+  await page.goto("https://www.instagram.com/reel/DO0hqB-iBcm/");
 
   let output: Output | null = null;
   const scripts = await page.$$("script");
@@ -36,6 +36,7 @@ async function run() {
         const data =
           json?.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]?.__bbox
             ?.result?.data?.xdt_api__v1__media__shortcode__web_info?.items?.[0];
+        await writeFile("out.reel.json", JSON.stringify(data, null, 2));
         if (data) {
           output = {
             like_count: data.like_count,
