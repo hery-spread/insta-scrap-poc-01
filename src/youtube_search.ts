@@ -11,6 +11,7 @@ interface SearchResult {
   text: string;
   avatarUrl: string;
   username: string;
+  duration: string;
 }
 
 async function scrapeFromSearch(
@@ -48,29 +49,40 @@ async function scrapeFromSearch(
       break;
     }
 
-    // Extract content URLs and titles from current view
+    // Extract content URLs, titles, and durations from current view
     const contentItems = await page.evaluate(() => {
-      const items: { url: string; title: string }[] = [];
-      const titleLinks = document.querySelectorAll('a[id="video-title"][href]');
+      const items: { url: string; title: string; duration: string }[] = [];
+      const videoRenderers = document.querySelectorAll("ytd-video-renderer");
 
-      for (const link of titleLinks) {
-        const href = (link as HTMLAnchorElement).href;
-        const title =
-          (link as HTMLAnchorElement).getAttribute("title") || "";
-        if (href) {
-          items.push({ url: href, title });
+      for (const renderer of videoRenderers) {
+        const titleLink = renderer.querySelector(
+          'a[id="video-title"][href]',
+        ) as HTMLAnchorElement;
+        const durationElement = renderer.querySelector(".yt-badge-shape__text");
+
+        if (titleLink) {
+          const href = titleLink.href;
+          const title = titleLink.getAttribute("title") || "";
+          const duration = durationElement?.textContent?.trim() || "";
+
+          if (href) {
+            items.push({ url: href, title, duration });
+          }
         }
       }
 
       return items;
     });
 
-    console.log(`[Search] Found ${contentItems.length} items in search results`);
+    console.log(
+      `[Search] Found ${contentItems.length} items in search results`,
+    );
 
     // Process each content item
     for (const contentItem of contentItems) {
       const contentUrl = contentItem.url;
       const contentTitle = contentItem.title;
+      const contentDuration = contentItem.duration;
       if (processedUrls.has(contentUrl) || results.length >= maxResult) {
         continue;
       }
@@ -182,6 +194,7 @@ async function scrapeFromSearch(
           text: descriptionTextStr.trim(),
           username: channelInfo.username,
           avatarUrl: channelInfo.avatarUrl,
+          duration: contentDuration,
         });
 
         console.log(
@@ -191,7 +204,7 @@ async function scrapeFromSearch(
 
       // Go back to search results
       await page.goto(searchUrl);
-      await page.waitForSelector("#contents", { timeout: 10000 });
+      await page.waitForSelector("#contents", { timeout: 20000 });
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
