@@ -3,6 +3,26 @@
 async function pageFunction(context) {
   const { page, log } = context;
 
+  // Helper function to check if duration is less than 3 minutes
+  function isDurationLessThanThreeMinutes(duration) {
+    if (!duration) return false;
+
+    const parts = duration.split(":");
+    if (parts.length === 1) {
+      // Just seconds, e.g., "45"
+      const seconds = parseInt(parts[0], 10);
+      return !isNaN(seconds) && seconds < 180;
+    } else if (parts.length === 2) {
+      // MM:SS format
+      const minutes = parseInt(parts[0], 10);
+      return !isNaN(minutes) && minutes < 3;
+    } else if (parts.length === 3) {
+      // HH:MM:SS format - any video with hours is > 3 minutes
+      return false;
+    }
+    return false;
+  }
+
   async function scrapeFromSearch(
     page,
     channelUrl,
@@ -88,13 +108,52 @@ async function pageFunction(context) {
         processedUrls.add(contentUrl);
 
         // Determine content type by URL pattern
-        const isShort = contentUrl.includes("/shorts/");
+        let isShort = contentUrl.includes("/shorts/");
+        let finalUrl = contentUrl;
+
+        // If duration < 3 minutes and it's a watch URL, test if it's actually a short
+        if (
+          !isShort &&
+          contentDuration &&
+          isDurationLessThanThreeMinutes(contentDuration)
+        ) {
+          const watchMatch = contentUrl.match(/\/watch\?v=([^&]+)/);
+          if (watchMatch) {
+            const videoId = watchMatch[1];
+            const shortsUrl = `https://www.youtube.com/shorts/${videoId}`;
+
+            log.info("[Search] Duration < 3 min, testing if short", {
+              shortsUrl,
+            });
+
+            // Try navigating to shorts URL
+            await page.goto(shortsUrl);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            // Check if URL stayed as shorts URL
+            const currentUrl = page.url();
+            if (currentUrl.includes("/shorts/")) {
+              isShort = true;
+              finalUrl = currentUrl;
+              log.info("[Search] Confirmed as short", { currentUrl });
+            } else {
+              log.info(
+                "[Search] Not a short, redirected to",
+                { currentUrl, message: "Using original URL" }
+              );
+              // Navigate back to the original watch URL
+              await page.goto(contentUrl);
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+          }
+        } else {
+          // Regular video or duration >= 3 min, navigate to original URL
+          await page.goto(contentUrl);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
         const contentType = isShort ? "Short" : "Video";
-
-        log.info(`[Search] Checking ${contentType}`, { contentUrl });
-
-        // Navigate to content page
-        await page.goto(contentUrl);
+        log.info(`[Search] Processing ${contentType}`, { finalUrl });
 
         // Start with title from search results
         let descriptionText = [contentTitle];
@@ -179,7 +238,7 @@ async function pageFunction(context) {
           descriptionTextStr.toLowerCase().includes(searchLower)
         ) {
           results.push({
-            url: contentUrl,
+            url: finalUrl,
             text: descriptionTextStr.trim(),
             username: channelInfo.username,
             avatarUrl: channelInfo.avatarUrl,
@@ -189,7 +248,7 @@ async function pageFunction(context) {
           log.info(`[Search] Found ${contentType.toLowerCase()}`, {
             count: results.length,
             maxResult,
-            contentUrl,
+            finalUrl,
             username: channelInfo.username,
           });
         }
