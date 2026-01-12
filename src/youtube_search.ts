@@ -219,13 +219,16 @@ async function scrapeFromSearch(
       return document.querySelectorAll('a[id="video-title"]').length;
     });
 
-    // Scroll down to load more content
+    // Scroll down to load more content (use ytd-app element, not document.body)
     await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
+      const ytdApp = document.querySelector("ytd-app");
+      if (ytdApp) {
+        window.scrollTo(0, ytdApp.scrollHeight);
+      }
     });
 
     // Wait for new content to load
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
 
     // Get new item count
     const newItemCount = await page.evaluate(() => {
@@ -264,7 +267,7 @@ async function run() {
   const channelUrl = `https://www.youtube.com/@ThePrimeTimeagen`;
 
   const maxResult = 100;
-  const maxDuration = 1 * 60 * 1000; // 1 minute for search
+  const maxDuration = 5 * 60 * 1000; // 1 minute for search
 
   // Navigate to channel page to extract channel info
   await page.goto(channelUrl);
