@@ -35,6 +35,7 @@ async function pageFunction(context) {
     search,
     maxResult,
     maxDuration,
+    urlsToSkip = new Set(),
   ) {
     log.info("[Posts] Navigating to profile:", { profileUrl });
     await page.goto(profileUrl);
@@ -102,6 +103,7 @@ async function pageFunction(context) {
         }
 
         if (processedUrls.has(url)) continue;
+        if (urlsToSkip.has(url)) continue;
         processedUrls.add(url);
 
         // Extract post ID and determine type
@@ -116,19 +118,16 @@ async function pageFunction(context) {
 
         // Filter by search query if provided
         if (!search || caption.toLowerCase().includes(searchLower)) {
-          // Check if URL already exists in results
-          if (!results.some((r) => r.url === url)) {
-            results.push({
-              url,
-              postId,
-              caption,
-              type,
-            });
+          results.push({
+            url,
+            postId,
+            caption,
+            type,
+          });
 
-            log.info(
-              `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
-            );
-          }
+          log.info(
+            `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
+          );
         } else {
           log.info(`[Posts] ✗ Skipped (no match for "${search}")`);
         }
@@ -164,6 +163,7 @@ async function pageFunction(context) {
     search,
     maxResult,
     maxDuration,
+    urlsToSkip = new Set(),
   ) {
     // Construct reels URL from profile URL
     const reelsUrl = profileUrl.endsWith("/")
@@ -232,6 +232,7 @@ async function pageFunction(context) {
         }
 
         if (processedUrls.has(url)) continue;
+        if (urlsToSkip.has(url)) continue;
         processedUrls.add(url);
 
         // Extract reel ID
@@ -245,19 +246,16 @@ async function pageFunction(context) {
 
         // Filter by search query if provided
         if (!search || caption.toLowerCase().includes(searchLower)) {
-          // Check if URL already exists in results
-          if (!results.some((r) => r.url === url)) {
-            results.push({
-              url,
-              postId,
-              caption,
-              type: "reel",
-            });
+          results.push({
+            url,
+            postId,
+            caption,
+            type: "reel",
+          });
 
-            log.info(
-              `[Reels] ✓ Added reel ${results.length}/${maxResult} (matches search)`,
-            );
-          }
+          log.info(
+            `[Reels] ✓ Added reel ${results.length}/${maxResult} (matches search)`,
+          );
         } else {
           log.info(`[Reels] ✗ Skipped (no match for "${search}")`);
         }
@@ -331,7 +329,8 @@ async function pageFunction(context) {
   );
   log.info("=== Post scraping complete ===", { itemsFound: posts.length });
 
-  // Scrape reels
+  // Scrape reels, skipping URLs already found in posts
+  const postsUrls = new Set(posts.map(p => p.url));
   log.info("=== Starting reel scraping ===");
   const reels = await scrapeInstagramReels(
     page,
@@ -339,6 +338,7 @@ async function pageFunction(context) {
     search,
     maxResult,
     maxDuration,
+    postsUrls,
   );
   log.info("=== Reel scraping complete ===", { itemsFound: reels.length });
 

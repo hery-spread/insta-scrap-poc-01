@@ -38,6 +38,7 @@ async function scrapeInstagramPosts(
   search: string,
   maxResult: number,
   maxDuration: number,
+  urlsToSkip: Set<string> = new Set(),
 ): Promise<PostData[]> {
   console.log(`[Posts] Navigating to profile: ${profileUrl}`);
   await page.goto(profileUrl);
@@ -105,6 +106,7 @@ async function scrapeInstagramPosts(
       }
 
       if (processedUrls.has(url)) continue;
+      if (urlsToSkip.has(url)) continue;
       processedUrls.add(url);
 
       // Extract post ID and determine type
@@ -119,19 +121,16 @@ async function scrapeInstagramPosts(
 
       // Filter by search query if provided
       if (!search || caption.toLowerCase().includes(searchLower)) {
-        // Check if URL already exists in results
-        if (!results.some((r) => r.url === url)) {
-          results.push({
-            url: url,
-            postId: postId,
-            caption: caption,
-            type: type as "post" | "reel",
-          });
+        results.push({
+          url: url,
+          postId: postId,
+          caption: caption,
+          type: type as "post" | "reel",
+        });
 
-          console.log(
-            `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
-          );
-        }
+        console.log(
+          `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
+        );
       } else {
         console.log(`[Posts] ✗ Skipped (no match for "${search}")`);
       }
@@ -167,6 +166,7 @@ async function scrapeInstagramReels(
   search: string,
   maxResult: number,
   maxDuration: number,
+  urlsToSkip: Set<string> = new Set(),
 ): Promise<PostData[]> {
   // Construct reels URL from profile URL
   const reelsUrl = profileUrl.endsWith("/")
@@ -235,6 +235,7 @@ async function scrapeInstagramReels(
       }
 
       if (processedUrls.has(url)) continue;
+      if (urlsToSkip.has(url)) continue;
       processedUrls.add(url);
 
       // Extract reel ID
@@ -322,7 +323,7 @@ async function run() {
 
   const profileUrl = "https://www.instagram.com/nike/";
   const username = await extractUsername(page);
-  const search = "innovation";
+  const search = "@Erling";
   const maxResult = 100;
   const maxDuration = 3.5 * 60 * 1000; // 5 minutes in milliseconds
 
@@ -343,7 +344,8 @@ async function run() {
   );
   console.log(`=== Post scraping complete: ${posts.length} items found ===\n`);
 
-  // Scrape reels
+  // Scrape reels, skipping URLs already found in posts
+  const postsUrls = new Set(posts.map(p => p.url));
   console.log("=== Starting reel scraping ===");
   const reels = await scrapeInstagramReels(
     page,
@@ -351,6 +353,7 @@ async function run() {
     search,
     maxResult,
     maxDuration,
+    postsUrls,
   );
   console.log(`=== Reel scraping complete: ${reels.length} items found ===\n`);
 
