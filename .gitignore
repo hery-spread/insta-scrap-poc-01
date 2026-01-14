@@ -2,3 +2,4 @@ node_modules
 chrome/
 cookies.json
 cookies_*.json
+dist
