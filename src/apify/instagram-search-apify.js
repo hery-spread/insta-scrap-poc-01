@@ -295,7 +295,7 @@ async function pageFunction(context) {
     height: 1080,
   });
 
-  const username = "%username%";
+  const username = await extractUsername(page);
   const search = "%search%";
   const maxResult = parseInt("%maxResult%");
   const maxDuration = parseInt("%maxDuration%") * 60 * 1000;
