@@ -119,16 +119,19 @@ async function scrapeInstagramPosts(
 
       // Filter by search query if provided
       if (!search || caption.toLowerCase().includes(searchLower)) {
-        results.push({
-          url: url,
-          postId: postId,
-          caption: caption,
-          type: type as "post" | "reel",
-        });
+        // Check if URL already exists in results
+        if (!results.some((r) => r.url === url)) {
+          results.push({
+            url: url,
+            postId: postId,
+            caption: caption,
+            type: type as "post" | "reel",
+          });
 
-        console.log(
-          `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
-        );
+          console.log(
+            `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
+          );
+        }
       } else {
         console.log(`[Posts] ✗ Skipped (no match for "${search}")`);
       }
@@ -245,16 +248,19 @@ async function scrapeInstagramReels(
 
       // Filter by search query if provided
       if (!search || caption.toLowerCase().includes(searchLower)) {
-        results.push({
-          url: url,
-          postId: postId,
-          caption: caption,
-          type: "reel",
-        });
+        // Check if URL already exists in results
+        if (!results.some((r) => r.url === url)) {
+          results.push({
+            url: url,
+            postId: postId,
+            caption: caption,
+            type: "reel",
+          });
 
-        console.log(
-          `[Reels] ✓ Added reel ${results.length}/${maxResult} (matches search)`,
-        );
+          console.log(
+            `[Reels] ✓ Added reel ${results.length}/${maxResult} (matches search)`,
+          );
+        }
       } else {
         console.log(`[Reels] ✗ Skipped (no match for "${search}")`);
       }

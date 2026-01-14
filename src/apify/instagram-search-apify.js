@@ -116,16 +116,19 @@ async function pageFunction(context) {
 
         // Filter by search query if provided
         if (!search || caption.toLowerCase().includes(searchLower)) {
-          results.push({
-            url,
-            postId,
-            caption,
-            type,
-          });
+          // Check if URL already exists in results
+          if (!results.some((r) => r.url === url)) {
+            results.push({
+              url,
+              postId,
+              caption,
+              type,
+            });
 
-          log.info(
-            `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
-          );
+            log.info(
+              `[Posts] ✓ Added ${type} ${results.length}/${maxResult} (matches search)`,
+            );
+          }
         } else {
           log.info(`[Posts] ✗ Skipped (no match for "${search}")`);
         }
@@ -242,16 +245,19 @@ async function pageFunction(context) {
 
         // Filter by search query if provided
         if (!search || caption.toLowerCase().includes(searchLower)) {
-          results.push({
-            url,
-            postId,
-            caption,
-            type: "reel",
-          });
+          // Check if URL already exists in results
+          if (!results.some((r) => r.url === url)) {
+            results.push({
+              url,
+              postId,
+              caption,
+              type: "reel",
+            });
 
-          log.info(
-            `[Reels] ✓ Added reel ${results.length}/${maxResult} (matches search)`,
-          );
+            log.info(
+              `[Reels] ✓ Added reel ${results.length}/${maxResult} (matches search)`,
+            );
+          }
         } else {
           log.info(`[Reels] ✗ Skipped (no match for "${search}")`);
         }
