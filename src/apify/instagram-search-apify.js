@@ -105,7 +105,7 @@ async function pageFunction(context) {
         processedUrls.add(url);
 
         // Extract post ID and determine type
-        const match = url.match(/\/(p|reel)\/([^\/]+)/);
+        const match = url.match(/(p|reel)\/([^/]+)/);
         const postId = match ? match[2] : "";
         const type = url.includes("/p/") ? "post" : "reel";
 
@@ -232,7 +232,7 @@ async function pageFunction(context) {
         processedUrls.add(url);
 
         // Extract reel ID
-        const match = url.match(/\/reel\/([^\/]+)/);
+        const match = url.match(/\/reel\/([^/]+)/);
         const postId = match ? match[1] : "";
 
         log.info(`[Reels] Processing ${processedUrls.size}: ${postId}`);
@@ -284,7 +284,7 @@ async function pageFunction(context) {
     // Extract username from Instagram profile URL
     // Supports formats: https://www.instagram.com/nike, https://www.instagram.com/nike/
     const url = await page.url();
-    const match = url.match(/instagram\.com\/([^\/\?]+)/);
+    const match = url.match(/instagram\.com\/([^/?]+)/);
     return match ? match[1] : "";
   }
 
