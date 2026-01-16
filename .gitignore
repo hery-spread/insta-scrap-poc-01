@@ -3,3 +3,5 @@ chrome/
 cookies.json
 cookies_*.json
 dist
+out.*.json
+*.cookies.json
