@@ -41,7 +41,7 @@ async function extractVideoData(page: any): Promise<TikTokPostData | null> {
   try {
     const jsonData = await page.evaluate(() => {
       const scriptElement = document.querySelector(
-        'script#__UNIVERSAL_DATA_FOR_REHYDRATION__'
+        "script#__UNIVERSAL_DATA_FOR_REHYDRATION__",
       );
       if (scriptElement && scriptElement.textContent) {
         return scriptElement.textContent;
@@ -128,27 +128,27 @@ async function extractVideoData(page: any): Promise<TikTokPostData | null> {
       stats: {
         playCount: parseInt(
           itemStruct.statsV2?.playCount || itemStruct.stats?.playCount || "0",
-          10
+          10,
         ),
         diggCount: parseInt(
           itemStruct.statsV2?.diggCount || itemStruct.stats?.diggCount || "0",
-          10
+          10,
         ),
         commentCount: parseInt(
           itemStruct.statsV2?.commentCount ||
             itemStruct.stats?.commentCount ||
             "0",
-          10
+          10,
         ),
         shareCount: parseInt(
           itemStruct.statsV2?.shareCount || itemStruct.stats?.shareCount || "0",
-          10
+          10,
         ),
         collectCount: parseInt(
           itemStruct.statsV2?.collectCount ||
             itemStruct.stats?.collectCount ||
             "0",
-          10
+          10,
         ),
       },
       createTime: itemStruct.createTime || 0,
@@ -165,7 +165,7 @@ async function extractVideoData(page: any): Promise<TikTokPostData | null> {
 function matchesSearch(
   post: TikTokPostData,
   searchType: "hashtag" | "mention",
-  searchValue: string
+  searchValue: string,
 ): boolean {
   const searchLower = searchValue.toLowerCase().replace(/^[#@]/, "");
 
@@ -174,7 +174,7 @@ function matchesSearch(
   } else {
     // For mentions, check both structured mentions and description text
     const hasMention = post.mentions.some(
-      (m) => m.toLowerCase() === searchLower
+      (m) => m.toLowerCase() === searchLower,
     );
     const descHasMention = post.description
       .toLowerCase()
@@ -188,7 +188,7 @@ function matchesSearch(
  */
 async function scrapeTikTokProfile(
   page: any,
-  options: SearchOptions
+  options: SearchOptions,
 ): Promise<TikTokPostData[]> {
   const { profileUrl, searchType, searchValue, maxResult, maxDuration } =
     options;
@@ -207,16 +207,14 @@ async function scrapeTikTokProfile(
   const processedUrls = new Set<string>();
   const startTime = Date.now();
 
-  console.log(
-    `[TikTok] Starting search for ${searchType}: ${searchValue}`
-  );
+  console.log(`[TikTok] Starting search for ${searchType}: ${searchValue}`);
 
   while (results.length < maxResult) {
     // Check timeout
     const elapsedTime = Date.now() - startTime;
     if (elapsedTime > maxDuration) {
       console.log(
-        `[TikTok] Timeout: Reached max duration of ${maxDuration / 1000}s`
+        `[TikTok] Timeout: Reached max duration of ${maxDuration / 1000}s`,
       );
       break;
     }
@@ -224,11 +222,13 @@ async function scrapeTikTokProfile(
     // Extract video URLs from current view
     const videoUrls = await page.evaluate(() => {
       const urls: string[] = [];
-      const items = Array.from(document.querySelectorAll('[data-e2e="user-post-item"]'));
+      const items = Array.from(
+        document.querySelectorAll('[data-e2e="user-post-item"]'),
+      );
 
       for (const item of items) {
         const link = item.querySelector(
-          'a[href*="/video/"]'
+          'a[href*="/video/"]',
         ) as HTMLAnchorElement;
         if (link?.href) {
           urls.push(link.href);
@@ -248,7 +248,7 @@ async function scrapeTikTokProfile(
       const elapsedTime = Date.now() - startTime;
       if (elapsedTime > maxDuration) {
         console.log(
-          `[TikTok] Timeout: Reached max duration of ${maxDuration / 1000}s`
+          `[TikTok] Timeout: Reached max duration of ${maxDuration / 1000}s`,
         );
         break;
       }
@@ -257,32 +257,37 @@ async function scrapeTikTokProfile(
       processedUrls.add(videoUrl);
 
       console.log(
-        `[TikTok] Processing video ${processedUrls.size}: ${videoUrl}`
+        `[TikTok] Processing video ${processedUrls.size}: ${videoUrl}`,
       );
 
       try {
         // Navigate to video page to extract data
-        await page.goto(videoUrl, { waitUntil: "networkidle2", timeout: 20000 });
+        await page.goto(videoUrl, {
+          waitUntil: "networkidle2",
+          timeout: 20000,
+        });
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
         const videoData = await extractVideoData(page);
 
         if (videoData) {
           console.log(
-            `[TikTok]   Hashtags: ${videoData.hashtags.join(", ") || "none"}`
+            `[TikTok]   Hashtags: ${videoData.hashtags.join(", ") || "none"}`,
           );
           console.log(
-            `[TikTok]   Mentions: ${videoData.mentions.join(", ") || "none"}`
+            `[TikTok]   Mentions: ${videoData.mentions.join(", ") || "none"}`,
           );
 
           // Check if matches search criteria
           if (matchesSearch(videoData, searchType, searchValue)) {
             results.push(videoData);
             console.log(
-              `[TikTok] ✓ Match found! ${results.length}/${maxResult}`
+              `[TikTok] ✓ Match found! ${results.length}/${maxResult}`,
             );
           } else {
-            console.log(`[TikTok] ✗ No match for ${searchType}: ${searchValue}`);
+            console.log(
+              `[TikTok] ✗ No match for ${searchType}: ${searchValue}`,
+            );
           }
         } else {
           console.log(`[TikTok] ✗ Could not extract data from video`);
@@ -293,14 +298,22 @@ async function scrapeTikTokProfile(
 
       // Go back to profile (with error handling)
       try {
-        await page.goto(profileUrl, { waitUntil: "networkidle2", timeout: 20000 });
+        await page.goto(profileUrl, {
+          waitUntil: "networkidle2",
+          timeout: 20000,
+        });
         await page.waitForSelector('[data-e2e="user-post-item-list"]', {
           timeout: 20000,
         });
         await new Promise((resolve) => setTimeout(resolve, 2000));
       } catch (error) {
-        console.log(`[TikTok] Warning: Error returning to profile, retrying...`);
-        await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: 30000 });
+        console.log(
+          `[TikTok] Warning: Error returning to profile, retrying...`,
+        );
+        await page.goto(profileUrl, {
+          waitUntil: "domcontentloaded",
+          timeout: 30000,
+        });
         await new Promise((resolve) => setTimeout(resolve, 3000));
       }
     }
@@ -343,6 +356,7 @@ async function run() {
   const { browser, page } = await connect({
     headless: false,
     customConfig: {
+      // "./chrome/mac-142.0.7444.59/chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
       chromePath:
         "./chrome/chrome/mac_arm-143.0.7499.192/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
     },
@@ -385,17 +399,14 @@ async function run() {
 
   console.log(`\n=== SUMMARY ===`);
   console.log(
-    `Found ${results.length} posts with ${searchType}: ${searchValue}`
+    `Found ${results.length} posts with ${searchType}: ${searchValue}`,
   );
 
   console.log(`\n=== RESULTS ===`);
   console.log(JSON.stringify(results, null, 2));
 
   // Save results to file
-  await writeFile(
-    "out.tiktok-search.json",
-    JSON.stringify(results, null, 2)
-  );
+  await writeFile("out.tiktok-search.json", JSON.stringify(results, null, 2));
   console.log(`\nResults saved to out.tiktok-search.json`);
 
   await browser.close();
