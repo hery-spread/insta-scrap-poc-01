@@ -1,11 +1,6 @@
 import { readFile, writeFile } from "fs/promises";
 import { connect } from "puppeteer-real-browser";
 
-type Output = {
-  like_count: number;
-  comment_count: number;
-};
-
 async function run() {
   const { browser, page } = await connect({
     headless: false,
@@ -18,6 +13,11 @@ async function run() {
     turnstile: true,
   });
 
+  await page.setViewport({
+    width: 1920,
+    height: 1080,
+  });
+
   const cookiesData = await readFile("cookies.json", "utf-8");
   const cookies = JSON.parse(cookiesData);
 
@@ -25,19 +25,12 @@ async function run() {
   await page.goto("https://www.instagram.com/reel/DO0hqB-iBcm/");
   // await page.goto("https://www.instagram.com/p/DSXdx0biPeZ/?img_index=1");
 
-  let output: Output | null = null;
+  const url = await page.url();
+  console.log("[INFO] url", url);
+  let output = null;
   const scripts = await page.$$("script");
-  const scriptsContent: string[] = [];
   for (const scriptHandle of scripts) {
     const content = await page.evaluate((el) => el.textContent, scriptHandle);
-    // if (content && content.includes("like_count")) {
-    //   scriptsContent.push(scripts.toString());
-    //   scriptsContent.push("=========");
-    //   scriptsContent.push(
-    //     content ? JSON.stringify(JSON.parse(content ?? ""), null, 2) : "",
-    //   );
-    // }
-    // continue;
     if (
       content &&
       content.includes("xdt_api__v1__media__shortcode__web_info")
@@ -47,12 +40,10 @@ async function run() {
         const data =
           json?.require?.[0]?.[3]?.[0]?.__bbox?.require?.[0]?.[3]?.[1]?.__bbox
             ?.result?.data?.xdt_api__v1__media__shortcode__web_info?.items?.[0];
+
         await writeFile("out.reel.json", JSON.stringify(data, null, 2));
         if (data) {
-          output = {
-            like_count: data.like_count,
-            comment_count: data.comment_count,
-          };
+          output = { url, ...data };
         } else {
           console.log(
             "[WARN] xdt_api__v1__media__shortcode__web_info exist but data not found",
@@ -60,7 +51,10 @@ async function run() {
           );
         }
       } catch (error) {
-        console.log("[ERROR] failed to parse content", error);
+        console.log(
+          "[ERROR] xdt_api__v1__media__shortcode__web_info: failed to parse content",
+          error,
+        );
       }
       break;
     } else if (
@@ -75,26 +69,67 @@ async function run() {
             .node?.media;
         await writeFile("out.reel_2.json", JSON.stringify(data, null, 2));
         if (data) {
-          output = {
-            like_count: data.like_count,
-            comment_count: data.comment_count,
-          };
+          output = { url, ...data };
         } else {
           console.log(
-            "[WARN] xdt_api__v1__media__shortcode__web_info exist but data not found",
+            "[WARN] xdt_api__v1__clips__home__connection_v2 exist but data not found",
             json,
           );
         }
       } catch (error) {
-        console.log("[ERROR] failed to parse content", error);
+        console.log(
+          "[ERROR] xdt_api__v1__clips__home__connection_v2: failed to parse content",
+          error,
+        );
       }
+      break;
     }
   }
 
-  // await writeFile("script_post.json", scriptsContent.join("\n"));
-
   if (output) {
     console.log("[INFO] success!", output);
+
+    // Navigate to user profile
+    try {
+      console.log("[INFO] Navigating to user profile...");
+
+      // Use username from extracted data to construct profile URL
+      const username = output.user?.username;
+      if (username) {
+        const profileUrl = `https://www.instagram.com/${username}/`;
+        console.log("[INFO] Profile URL:", profileUrl);
+
+        // Navigate to profile page
+        await page.goto(profileUrl);
+        await page.waitForSelector('a[href*="/followers/"]', {
+          timeout: 10000,
+        });
+
+        // Extract real follower count from title attribute
+        const followerCount = await page.evaluate(() => {
+          const followerLink = document.querySelector(
+            'a[href*="/followers/"] span[title]',
+          );
+          const title = followerLink
+            ? followerLink.getAttribute("title")
+            : null;
+          // Remove comma separators
+          return title ? title.replace(/,/g, "") : null;
+        });
+
+        if (followerCount) {
+          console.log("[INFO] Follower count:", followerCount);
+          output.user.profile_url = profileUrl;
+          output.user.follower_count = followerCount;
+        } else {
+          console.log("[WARN] Follower count not found");
+        }
+      } else {
+        console.log("[WARN] Profile link not found");
+      }
+    } catch (error) {
+      console.log("[ERROR] Failed to extract profile data:", error);
+    }
   } else {
     console.log("[INFO] empty data", output);
   }
